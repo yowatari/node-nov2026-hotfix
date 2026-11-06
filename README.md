@@ -4,16 +4,15 @@
 
 Node.js プロジェクトは、**26.x / 24.x / 22.x の修正版を 2026-11-11（水）以降に出す**と予告しています（[予告](https://nodejs.org/en/blog/vulnerability/november-2026-security-releases)。最高深刻度は HIGH）。このリポジトリは、修正版が nodejs.org に出たら**バージョン番号を上げて push するだけ**で、署名と SBOM（イメージの部品表）付きのイメージを ghcr.io に出すためのものです。予告から当日までの間に、パイプラインを今のバージョン（26.13.0 / 24.22.2 / 22.23.4）で動かしておきます。
 
-構成は [php-oct2026-hotfix](https://github.com/yowatari/php-oct2026-hotfix) と同じです（Wolfi + melange + apko、cosign のキーレス署名、Trivy / Grype の結果の添付）。
+## 構成
 
-## PHP 版との違い
-
-| | PHP 版 | この Node 版 |
-|---|---|---|
-| 本体 | php.net の tarball からソースビルド | nodejs.org の**公式バイナリ**を apk に詰め直す（コンパイルなし） |
-| 改ざんの確認 | php.net の sha256 と照合 | `SHASUMS256.txt` の **GPG 署名を Node.js のリリース担当者の鍵で検証**し、その sha256 と照合 |
-| EOL | 公式バックポートを当てて 7.4 まで | 対象外（20.x 以前は公式の修正が出ない） |
-| イメージ | CLI / FPM | ランタイム（`:24`、node のみ）/ `-dev`（npm とシェル付き） |
+| | 中身 |
+|---|---|
+| 本体 | nodejs.org の**公式バイナリ**を、melange で Wolfi の apk に詰め直す（コンパイルなし） |
+| 改ざんの確認 | `SHASUMS256.txt` の **GPG 署名を Node.js のリリース担当者の鍵で検証**し、その sha256 と照合 |
+| イメージ | apko で組む。ランタイム（`:24`、node のみ）/ `-dev`（npm とシェル付き） |
+| 配布 | cosign のキーレス署名、SBOM、Trivy / Grype のスキャン結果の添付 |
+| 対象 | 26 / 24 / 22。20.x 以前の EOL ラインは公式の修正が出ないので対象外 |
 
 公式バイナリを使うのは、Node のソースビルドは 1 バージョン × 1 アーキテクチャで数十分かかり、当日すぐ出すという目的に合わないためです。Wolfi は glibc なので、公式の linux バイナリがそのまま動きます。修正パッチが公開されるのはリリースと同時なので、パッチを先に当てて出すこともできません。
 
