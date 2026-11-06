@@ -117,6 +117,18 @@ jobs:
           sign-with-temporary-key: true
           signing-key-path: ${{ github.workspace }}/keys/${{ matrix.arch }}.rsa
 
+      # melange-build only builds; run the package tests (node -v, crypto,
+      # npm in the -npm subpackage) against the freshly built apks.
+      - name: melange test
+        if: steps.skip.outputs.skip != 'true' && steps.cache.outputs.cache-hit != 'true'
+        env:
+          DIR: ${{ steps.render.outputs.dir }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          docker run --privileged --rm -v "$PWD":/work -w /work cgr.dev/chainguard/melange:latest \
+            test "$DIR/melange.yaml" --arch "$ARCH" \
+            --repository-append "/work/$DIR/packages" --keyring-append "/work/keys/$ARCH.rsa.pub"
+
       - name: Drop the private key
         if: steps.skip.outputs.skip != 'true' && steps.cache.outputs.cache-hit != 'true'
         run: |
