@@ -1,0 +1,96 @@
+# Rendered by scripts/render.sh -> build/<version>/melange.yaml. Do not edit build/ by hand.
+#
+# Repackages the official Node.js release binaries from nodejs.org. No
+# compilation: the tarball shas come from SHASUMS256.txt, whose GPG signature
+# render.sh has already checked against the Node.js release keys.
+package:
+  name: node-hotfix
+  version: "@@VERSION@@"
+  epoch: 0
+  description: "Node.js @@VERSION@@ official linux binary from nodejs.org"
+  copyright:
+    - license: MIT
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+      - glibc
+      - libgcc
+      - libstdc++
+      - tzdata
+
+environment:
+  contents:
+    repositories:
+      - https://packages.wolfi.dev/os
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    packages:
+      - busybox
+      - ca-certificates-bundle
+
+pipeline:
+  - if: ${{build.arch}} == 'x86_64'
+    uses: fetch
+    with:
+      uri: https://nodejs.org/dist/v${{package.version}}/node-v${{package.version}}-linux-x64.tar.xz
+      expected-sha256: "@@SHA256_X64@@"
+
+  - if: ${{build.arch}} == 'aarch64'
+    uses: fetch
+    with:
+      uri: https://nodejs.org/dist/v${{package.version}}/node-v${{package.version}}-linux-arm64.tar.xz
+      expected-sha256: "@@SHA256_ARM64@@"
+
+  - name: Install
+    runs: |
+      d="${{targets.destdir}}"
+      install -Dm755 bin/node "$d/usr/bin/node"
+      # npm, npx (and corepack on lines that still bundle it) go to the -npm subpackage.
+      mkdir -p "$d/usr/lib"
+      cp -a lib/node_modules "$d/usr/lib/"
+      install -Dm644 LICENSE "$d/usr/share/licenses/node-hotfix/LICENSE"
+
+subpackages:
+  - name: node-hotfix-npm
+    description: "npm (and corepack where bundled) shipped with Node.js @@VERSION@@"
+    dependencies:
+      runtime:
+        - node-hotfix
+        - busybox # npm-cli.js starts with #!/usr/bin/env node
+    pipeline:
+      - runs: |
+          mkdir -p "${{targets.subpkgdir}}/usr/lib" "${{targets.subpkgdir}}/usr/bin"
+          mv "${{targets.destdir}}/usr/lib/node_modules" "${{targets.subpkgdir}}/usr/lib/"
+          cd "${{targets.subpkgdir}}/usr/bin"
+          ln -s ../lib/node_modules/npm/bin/npm-cli.js npm
+          ln -s ../lib/node_modules/npm/bin/npx-cli.js npx
+          if [ -d ../lib/node_modules/corepack ]; then
+            ln -s ../lib/node_modules/corepack/dist/corepack.js corepack
+          fi
+    test:
+      environment:
+        contents:
+          repositories:
+            - https://packages.wolfi.dev/os
+          keyring:
+            - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+      pipeline:
+        - runs: |
+            npm --version
+            npx --version
+
+test:
+  environment:
+    contents:
+      repositories:
+        - https://packages.wolfi.dev/os
+      keyring:
+        - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+      packages:
+        - busybox
+  pipeline:
+    - runs: |
+        node -v
+        test "$(node -v)" = "v@@VERSION@@"
+        test ! -e /usr/lib/node_modules/npm
+        node -e 'require("node:crypto").createHash("sha256").update("x").digest("hex"); console.log("openssl", process.versions.openssl)'
