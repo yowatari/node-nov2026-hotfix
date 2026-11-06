@@ -118,9 +118,9 @@ jobs:
           signing-key-path: ${{ github.workspace }}/keys/${{ matrix.arch }}.rsa
 
       # melange-build only builds; run the package tests (node -v, crypto,
-      # npm in the -npm subpackage) against the freshly built apks.
+      # npm in the -npm subpackage). Cheap, so cached apks are tested too.
       - name: melange test
-        if: steps.skip.outputs.skip != 'true' && steps.cache.outputs.cache-hit != 'true'
+        if: steps.skip.outputs.skip != 'true'
         env:
           DIR: ${{ steps.render.outputs.dir }}
           ARCH: ${{ matrix.arch }}
