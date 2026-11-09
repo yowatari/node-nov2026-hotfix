@@ -294,8 +294,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # cosign-installer and vul-scans download their tools from GitHub
+      # releases; a short GitHub outage (504s) used to fail the whole run.
+      # Steps that `uses:` an action can't retry themselves, so each gets a
+      # second attempt after a pause, only when the first one failed.
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        id: cosign-install
         if: steps.skip.outputs.skip != 'true' && env.PUBLISH == 'true'
+        continue-on-error: true
+
+      - name: Wait before retrying cosign install
+        if: steps.cosign-install.outcome == 'failure'
+        run: sleep 120
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        if: steps.cosign-install.outcome == 'failure'
 
       - name: cosign sign (keyless)
         if: steps.skip.outputs.skip != 'true' && env.PUBLISH == 'true'
@@ -327,9 +340,23 @@ jobs:
         run: docker buildx imagetools create --tag "${IMAGE,,}:build-$HASH" "$REF"
 
       # Trivy + Grype scan; results are attached to the image as signed
-      # cosign vuln attestations. Informational: does not fail the build.
+      # cosign vuln attestations. Informational: findings do not fail the
+      # build, but failing to run the scanners does (after one retry).
       - name: Vulnerability scan + attestation
+        id: vul-scan
         if: steps.skip.outputs.skip != 'true' && env.PUBLISH == 'true'
+        continue-on-error: true
+        uses: chainguard-images/actions/vul-scans@8e701b320e7efcb120a1115de26e9fe833f86390 # v1.0.38
+        with:
+          image: ${{ steps.publish.outputs.ref }}
+          RUN_SNYK: "false"
+
+      - name: Wait before retrying vulnerability scan
+        if: steps.vul-scan.outcome == 'failure'
+        run: sleep 120
+
+      - name: Vulnerability scan + attestation (retry)
+        if: steps.vul-scan.outcome == 'failure'
         uses: chainguard-images/actions/vul-scans@8e701b320e7efcb120a1115de26e9fe833f86390 # v1.0.38
         with:
           image: ${{ steps.publish.outputs.ref }}
