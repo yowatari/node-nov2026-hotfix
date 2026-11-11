@@ -4,7 +4,7 @@ English | [日本語](README.ja.md)
 
 > Intended readers: people using Docker and GitHub Actions who wait for official image updates when a CVE drops.
 
-The Node.js project has announced that it will release **fixed versions of the 26.x, 24.x and 22.x lines on or shortly after Wednesday, 2026-11-11** ([announcement](https://nodejs.org/en/blog/vulnerability/november-2026-security-releases); highest severity: HIGH). This repository exists so that, once those versions are on nodejs.org, **bumping the version numbers and pushing** is all it takes to publish signed images with an SBOM (a bill of materials for the image) to ghcr.io. Between the announcement and release day, the pipeline runs against the current versions (26.13.0 / 24.22.2 / 22.23.4).
+On 2026-11-11 the Node.js project released **fixed versions of the 26.x, 24.x and 22.x lines (26.13.1 / 24.22.3 / 22.23.5)** ([announcement](https://nodejs.org/en/blog/vulnerability/november-2026-security-releases); highest severity: HIGH). This repository exists so that, once fixed versions are on nodejs.org, **bumping the version numbers and pushing** is all it takes to publish signed images with an SBOM (a bill of materials for the image) to ghcr.io. The pipeline now builds these fixed versions (the previous ones were 26.13.0 / 24.22.2 / 22.23.4).
 
 ## How it is built
 
@@ -56,8 +56,8 @@ A minimal example is in [examples/copy-app](examples/copy-app).
 
 | Tag | Contents |
 |---|---|
-| `24`, `24.22.2`, `24.22.2-r0` | node only. uid 65532, no shell, `WORKDIR /app`, `NODE_ENV=production` |
-| `24-dev`, `24.22.2-dev`, `24.22.2-r0-dev` | The above plus npm / npx (and corepack where bundled) and busybox |
+| `24`, `24.22.3`, `24.22.3-r0` | node only. uid 65532, no shell, `WORKDIR /app`, `NODE_ENV=production` |
+| `24-dev`, `24.22.3-dev`, `24.22.3-r0-dev` | The above plus npm / npx (and corepack where bundled) and busybox |
 
 26 and 22 follow the same pattern. All images are multi-arch: linux/amd64 and linux/arm64.
 
@@ -89,17 +89,17 @@ cosign verify ghcr.io/yowatari/node-nov2026-hotfix:24 \
 ### Building locally
 
 ```sh
-scripts/render.sh 24.22.2
+scripts/render.sh 24.22.3
 docker run --rm -v "$PWD":/work -w /work cgr.dev/chainguard/melange keygen melange.rsa
 docker run --privileged --rm -v "$PWD":/work -w /work cgr.dev/chainguard/melange \
-  build build/24.22.2/melange.yaml --arch x86_64 --signing-key melange.rsa \
-  --out-dir build/24.22.2/packages
+  build build/24.22.3/melange.yaml --arch x86_64 --signing-key melange.rsa \
+  --out-dir build/24.22.3/packages
 docker run --privileged --rm -v "$PWD":/work -w /work cgr.dev/chainguard/melange \
-  test build/24.22.2/melange.yaml --arch x86_64 \
-  --repository-append /work/build/24.22.2/packages --keyring-append /work/melange.rsa.pub
+  test build/24.22.3/melange.yaml --arch x86_64 \
+  --repository-append /work/build/24.22.3/packages --keyring-append /work/melange.rsa.pub
 docker run --rm -v "$PWD":/work -w /work cgr.dev/chainguard/apko \
-  build build/24.22.2/apko.yaml node-hotfix:rt build/24.22.2/image-rt.tar --arch x86_64 \
-  -r /work/build/24.22.2/packages -k /work/melange.rsa.pub   # apko-dev.yaml for -dev
-docker load < build/24.22.2/image-rt.tar
-scripts/smoke.sh node-hotfix:rt-amd64 node-hotfix:dev-amd64 24.22.2
+  build build/24.22.3/apko.yaml node-hotfix:rt build/24.22.3/image-rt.tar --arch x86_64 \
+  -r /work/build/24.22.3/packages -k /work/melange.rsa.pub   # apko-dev.yaml for -dev
+docker load < build/24.22.3/image-rt.tar
+scripts/smoke.sh node-hotfix:rt-amd64 node-hotfix:dev-amd64 24.22.3
 ```

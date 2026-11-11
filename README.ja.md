@@ -4,7 +4,7 @@
 
 > 想定読者：CVE が出たら公式イメージの更新を待っている、Docker と GitHub Actions を使う人。
 
-Node.js プロジェクトは、**26.x / 24.x / 22.x の修正版を 2026-11-11（水）以降に出す**と予告しています（[予告](https://nodejs.org/en/blog/vulnerability/november-2026-security-releases)。最高深刻度は HIGH）。このリポジトリは、修正版が nodejs.org に出たら**バージョン番号を上げて push するだけ**で、署名と SBOM（イメージの部品表）付きのイメージを ghcr.io に出すためのものです。予告から当日までの間に、パイプラインを今のバージョン（26.13.0 / 24.22.2 / 22.23.4）で動かしておきます。
+Node.js プロジェクトは 2026-11-11 に、**26.x / 24.x / 22.x の修正版（26.13.1 / 24.22.3 / 22.23.5）**を出しました（[告知](https://nodejs.org/en/blog/vulnerability/november-2026-security-releases)。最高深刻度は HIGH）。このリポジトリは、修正版が nodejs.org に出たら**バージョン番号を上げて push するだけ**で、署名と SBOM（イメージの部品表）付きのイメージを ghcr.io に出すためのものです。いまはこの修正版をビルドしています（修正前は 26.13.0 / 24.22.2 / 22.23.4）。
 
 ## 構成
 
@@ -56,8 +56,8 @@ CMD ["server.js"]
 
 | タグ | 中身 |
 |---|---|
-| `24`, `24.22.2`, `24.22.2-r0` | node だけ。uid 65532、シェルなし、`WORKDIR /app`、`NODE_ENV=production` |
-| `24-dev`, `24.22.2-dev`, `24.22.2-r0-dev` | 上に npm / npx（と、同梱されていれば corepack）と busybox を追加 |
+| `24`, `24.22.3`, `24.22.3-r0` | node だけ。uid 65532、シェルなし、`WORKDIR /app`、`NODE_ENV=production` |
+| `24-dev`, `24.22.3-dev`, `24.22.3-r0-dev` | 上に npm / npx（と、同梱されていれば corepack）と busybox を追加 |
 
 26 / 22 も同じ形です。どれも linux/amd64 と linux/arm64 のマルチアーキテクチャです。
 
@@ -89,17 +89,17 @@ cosign verify ghcr.io/yowatari/node-nov2026-hotfix:24 \
 ### ローカルでのビルド
 
 ```sh
-scripts/render.sh 24.22.2
+scripts/render.sh 24.22.3
 docker run --rm -v "$PWD":/work -w /work cgr.dev/chainguard/melange keygen melange.rsa
 docker run --privileged --rm -v "$PWD":/work -w /work cgr.dev/chainguard/melange \
-  build build/24.22.2/melange.yaml --arch x86_64 --signing-key melange.rsa \
-  --out-dir build/24.22.2/packages
+  build build/24.22.3/melange.yaml --arch x86_64 --signing-key melange.rsa \
+  --out-dir build/24.22.3/packages
 docker run --privileged --rm -v "$PWD":/work -w /work cgr.dev/chainguard/melange \
-  test build/24.22.2/melange.yaml --arch x86_64 \
-  --repository-append /work/build/24.22.2/packages --keyring-append /work/melange.rsa.pub
+  test build/24.22.3/melange.yaml --arch x86_64 \
+  --repository-append /work/build/24.22.3/packages --keyring-append /work/melange.rsa.pub
 docker run --rm -v "$PWD":/work -w /work cgr.dev/chainguard/apko \
-  build build/24.22.2/apko.yaml node-hotfix:rt build/24.22.2/image-rt.tar --arch x86_64 \
-  -r /work/build/24.22.2/packages -k /work/melange.rsa.pub   # -dev は apko-dev.yaml
-docker load < build/24.22.2/image-rt.tar
-scripts/smoke.sh node-hotfix:rt-amd64 node-hotfix:dev-amd64 24.22.2
+  build build/24.22.3/apko.yaml node-hotfix:rt build/24.22.3/image-rt.tar --arch x86_64 \
+  -r /work/build/24.22.3/packages -k /work/melange.rsa.pub   # -dev は apko-dev.yaml
+docker load < build/24.22.3/image-rt.tar
+scripts/smoke.sh node-hotfix:rt-amd64 node-hotfix:dev-amd64 24.22.3
 ```
