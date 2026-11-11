@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: scripts/render.sh <node-version>   e.g. scripts/render.sh 24.22.2
+# Usage: scripts/render.sh <node-version>   e.g. scripts/render.sh 24.22.3
 #
 # Fetches SHASUMS256.txt for the release from nodejs.org, verifies its GPG
 # signature against the Node.js release keys (nodejs/release-keys, pinned
